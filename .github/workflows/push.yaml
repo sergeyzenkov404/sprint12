@@ -1,0 +1,43 @@
+name: sprint12
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: golang:1.26.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test
+        run: GOOS=linux GOARCH=amd64 go test
+
+      - name: Vet
+        run: |
+          go vet ./...
+  deploy:
+    name: Push Docker
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags')
+    steps:
+      - name: Set up Docker buildx action
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ktototamgdeto1/sprint12
+
+      - name: Build and push Docker Image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
